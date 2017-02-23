@@ -146,7 +146,7 @@ function Bitmap4BBPContext(bitmap) {
         if(y >= this._bitmap.height) return;
         var n = this._index(Math.floor(x),Math.floor(y));
         var old_int = this._bitmap._buffer.readUInt32BE(n);
-        var final_int = exports.compositePixel(new_int,old_int,this.mode);
+        var final_int = exports.compositePixel(old_int,new_int,this.mode);
         this._bitmap._buffer.writeUInt32BE(final_int,n);
     }
 
