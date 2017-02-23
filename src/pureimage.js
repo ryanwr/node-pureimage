@@ -20,7 +20,7 @@ var DEFAULT_FONT_FAMILY = 'source';
 function Bitmap4BBP(w,h,options) {
     this.width = Math.floor(w);
     this.height = Math.floor(h);
-    var fillval = 0x000000FF;
+    var fillval = 0x00000000;
     if(options && (typeof options.fillval) !== undefined) {
         fillval = options.fillval;
     }
@@ -548,6 +548,10 @@ function colorStringToUint32(str) {
         var int = uint32.toUint32(parseInt(str.substring(1),16));
         int = uint32.shiftLeft(int,8);
         int = uint32.or(int,0xff);
+        return int;
+    } else if(str.indexOf('rgba')==0) {
+        var match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/.exec(str); // Ugly regex
+        var int = uint32.toUint32(match[1]<<24 | match[2]<<16 | match[3]<<8 | Math.floor(255*match[4]));
         return int;
     }
     if(NAMED_COLORS[str]) {
