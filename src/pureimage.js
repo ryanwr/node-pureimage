@@ -87,7 +87,6 @@ function Bitmap4BBPContext(bitmap) {
 
     this._bitmap = bitmap;
     this.transform = new trans.Transform();
-    this.mode = "OVER";
     this._settings = {
         font: {
             family:'serif',
@@ -122,6 +121,7 @@ function Bitmap4BBPContext(bitmap) {
     this._fillStyle_text = "black"; // the text version set by using the fillStyle setter.
     this._strokeColor = 0x000000FF;
     this._strokeStyle_text = "black";
+    this._globalCompositeOperation = "source-over";
     Object.defineProperty(this, 'fillStyle', {
         get: function() { return this._fillStyle_text; },
         set: function(val) {
@@ -136,6 +136,12 @@ function Bitmap4BBPContext(bitmap) {
             this._strokeStyle_text = val;
         }
     });
+    Object.defineProperty(this, 'globalCompositeOperation', {
+        get: function() { return this._globalCompositeOperation; },
+        set: function(val) {
+            this._globalCompositeOperation = val.toLowerCase();
+        }
+    });
 
     // ================= drawing commands
     //sets a pixel with proper alpha compositing
@@ -146,7 +152,7 @@ function Bitmap4BBPContext(bitmap) {
         if(y >= this._bitmap.height) return;
         var n = this._index(Math.floor(x),Math.floor(y));
         var old_int = this._bitmap._buffer.readUInt32BE(n);
-        var final_int = exports.compositePixel(old_int,new_int,this.mode);
+        var final_int = exports.compositePixel(new_int,old_int,this._globalCompositeOperation);
         this._bitmap._buffer.writeUInt32BE(final_int,n);
     }
 
@@ -165,13 +171,23 @@ function Bitmap4BBPContext(bitmap) {
                 var nd = ((dy+j)*i1w + (dx+i))*4;
                 var oval = this._bitmap._buffer.readUInt32BE(nd);
                 var nval = img2._buffer.readUInt32BE(ns);
-                var fval = exports.compositePixel(nval,oval, this.mode);
+                var fval = exports.compositePixel(nval,oval, this._globalCompositeOperation);
                 this._bitmap._buffer.writeUInt32BE(fval,nd);
             }
         }
 
     }
-    this.drawImage = function(bitmap, sx,sy,sw,sh, dx, dy, dw, dh) {
+    this.drawImage = function(bitmap, sx, sy, sw, sh, dx, dy, dw, dh) {
+        if(dx == undefined || dy == undefined) {
+          dx = sx;
+          dy = sy;
+          dw = sw || bitmap.width;
+          dh = sh || bitmap.height;
+          sx = 0;
+          sy = 0;
+          sw = bitmap.width;
+          sh = bitmap.height;
+        }
         for(var i=dx; i<dx+dw; i++) {
             for(var j=dy; j<dy+dh; j++) {
                 var tx = (i-dx)/(dx+dw);
@@ -304,7 +320,7 @@ function Bitmap4BBPContext(bitmap) {
                 Math.ceil(ysize), { fillval: uint32.toUint32(0x00000000) });
         var ctx = bitmap.getContext('2d');
         ctx.fillStyle = '#000000';
-        ctx.mode = "REPLACE";
+        ctx.globalCompositeOperation = "source-over";
 
         ctx.beginPath();
         var fill = true;
@@ -316,7 +332,7 @@ function Bitmap4BBPContext(bitmap) {
                 case 'Z': ctx.closePath(); fill?ctx.fill():ctx.stroke(); ctx.beginPath(); break;
             }
         });
-        ctx.mode = "OVER";
+
         return {
             path: path,
             bitmap: bitmap,
@@ -349,7 +365,7 @@ function Bitmap4BBPContext(bitmap) {
                 var nd = ((j+y)*i1w + (x+i))*4;
                 var oval = this._bitmap._buffer.readUInt32BE(nd);
                 var nval2 = uint32.fromBytesBigEndian(crgb[0],crgb[1],crgb[2],alpha);
-                var fval = exports.compositePixel(nval2,oval, this.mode);
+                var fval = exports.compositePixel(nval2,oval, this._globalCompositeOperation);
                 this._bitmap._buffer.writeUInt32BE(fval,nd);
             }
         }
@@ -665,23 +681,23 @@ drawLine = function(image, line, color) {
 
 //composite pixel doubles the time. need to implement replace with a better thing
 exports.compositePixel  = function(src,dst,omode) {
-    if(omode == 'REPLACE') {
-        return src;
-    }
-    var src_rgba = uint32.getBytesBigEndian(src);
-    var dst_rgba = uint32.getBytesBigEndian(dst);
+  var src_rgba = uint32.getBytesBigEndian(src);
+  var dst_rgba = uint32.getBytesBigEndian(dst);
 
-    var src_alpha = src_rgba[3]/255;
-    var dst_alpha = dst_rgba[3]/255;
-    var final_a = dst_rgba[3];
+  switch(omode) {
+    case 'source-over':
+      var src_alpha = src_rgba[3]/255;
+      var dst_alpha = dst_rgba[3]/255;
 
-    var final_rgba = [
-        lerp(dst_rgba[0],src_rgba[0],src_alpha),
-        lerp(dst_rgba[1],src_rgba[1],src_alpha),
-        lerp(dst_rgba[2],src_rgba[2],src_alpha),
-        final_a,
-    ];
-    return uint32.fromBytesBigEndian(final_rgba[0], final_rgba[1], final_rgba[2], final_rgba[3]);
+      var final_rgba = [
+          lerp(dst_rgba[0],src_rgba[0],src_alpha),
+          lerp(dst_rgba[1],src_rgba[1],src_alpha),
+          lerp(dst_rgba[2],src_rgba[2],src_alpha),
+          src_rgba[3],
+      ];
+
+      return uint32.fromBytesBigEndian(final_rgba[0], final_rgba[1], final_rgba[2], final_rgba[3]);
+  }
 }
 
 

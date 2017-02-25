@@ -1,7 +1,7 @@
 var PImage = require('../src/pureimage');
 
 var fs = require('fs');
-var black = 0x000000ff;
+var transparent_black = 0x00000000;
 var red =   0xff0000ff;
 var green = 0x00ff00ff;
 
@@ -22,14 +22,14 @@ if(!fs.existsSync("build")) {
 
     var ctx = img1.getContext('2d');
 
-    eq(ctx.getPixeli32(0,0), 0x000000ff); // black with 100% alpha
+    eq(ctx.getPixeli32(0,0), transparent_black); // black with 0% alpha
     //ctx.setPixelRGBA(0,0, 255,0,0, 0.5);  // set to red with 50% alpha
     //eq(ctx.getPixeli32(0,0), 0xFF00007F); // red with 50% alpha
 
     //draw a red rect
     ctx.fillStyle = "#00FFFF";
     ctx.fillRect(10,0,200,200);
-    eq(ctx.getPixeli32(1,1), 0x000000FF); // still black outside the rect
+    eq(ctx.getPixeli32(1,1), transparent_black); // still black outside the rect
     eq(ctx.getPixeli32(15,25), 0x00FFFFFF); // red inside the rect
     ctx.compositePixel(1,1, 0x00FFFFFF); //set 1,1 to the current fill style, which is red
     eq(ctx.getPixeli32(1,1), 0x00FFFFFF); // this pixel is now red
@@ -48,8 +48,8 @@ if(!fs.existsSync("build")) {
 
     var ctx = img1.getContext('2d');
     ctx.drawImage(img2, 10,10);
-    eq(ctx.getPixeli32(0,0), black);
-    eq(ctx.getPixeli32(11,11), green);
+    eq(ctx.getPixeli32(0,0), transparent_black);
+    eq(ctx.getPixeli32(14,14), green);
 }
 
 {
@@ -149,7 +149,7 @@ if(!fs.existsSync("build")) {
     //compositing tests
     var src = 0xFF0000FF;
     var dst = 0xFFFFFFFF;
-    eq(PImage.compositePixel(src,dst),0xFF0000FF);
+    eq(PImage.compositePixel(src,dst, 'source-over'),0xFF0000FF);
 }
 
 function eq(a,b) {
@@ -170,7 +170,7 @@ function clearRectTest() {
      ctx.fillRect(0,0,100,100);
      ctx.clearRect(25,25,50,50);
      eq(ctx.getPixeli32(1,1), 0x00FF00ff); // opaque green
-     eq(ctx.getPixeli32(30,30), 0x00000000); //transparent black
+     eq(ctx.getPixeli32(30,30), transparent_black); //transparent black
      PImage.encodePNG(img, fs.createWriteStream('build/clearrect.png'), function(err) {
         console.log("wrote out the png file to build/clearrect.png",err);
      });
